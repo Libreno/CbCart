@@ -135,6 +135,7 @@ namespace CbCart.Repository
 			if (redis != null)
 			{
 				redis.Dispose();
+				redis = null;
 			}
 			//Console.WriteLine("repo disposed");
 		}

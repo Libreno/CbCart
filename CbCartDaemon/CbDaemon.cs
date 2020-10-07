@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace CbCart.Daemon
 {
@@ -27,17 +28,25 @@ namespace CbCart.Daemon
 		{
 			using var repo = new CbCartRepository(redisUrl);
 			var allCarts = repo.GetAllCarts();
-			var cartsAlive = DeleteOldCarts(repo, allCarts);
+			var cartsAlive = DeleteOldCarts(repo, allCarts, out var webHookTasks);
 			var report = BuildReport(repo, cartsAlive);
 			var path = $"{reportsFolder}carts_report_{DateTime.Now:yyyyMMdd_Hmmss}.txt";
 			File.WriteAllText(path, report);
 			Console.WriteLine(report);
+			try
+			{
+				Task.WaitAll(webHookTasks.ToArray());
+			}
+			catch (Exception e) {
+				Console.WriteLine($"Exception {e.Message}");
+			}
 			Console.WriteLine($"Report saved to '{path}'.");
 		}
 
-		private IEnumerable<string> DeleteOldCarts(CbCartRepository repo, IEnumerable<string> allCarts)
+		private IEnumerable<string> DeleteOldCarts(CbCartRepository repo, IEnumerable<string> allCarts, out List<Task> webHookTasks)
 		{
 			var res = new List<string>();
+			webHookTasks = new List<Task>();
 			foreach (var cartId in allCarts)
 			{
 				var cart = repo.GetCart(cartId);
@@ -46,7 +55,9 @@ namespace CbCart.Daemon
 				{
 					if (!string.IsNullOrWhiteSpace(cart.WebHook))
 					{
-						RunWebHook(cart);
+						webHookTasks.Add(Task.Run(() => { 
+							RunWebHook(cart); 
+						}));
 					}
 					repo.DeleteCart(cartId);
 					Console.WriteLine("deleted");

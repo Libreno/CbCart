@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Net;
 using CbCart.Repository;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.Swagger.Annotations;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -34,14 +32,18 @@ namespace CbCartService.Controllers
 		[ProducesResponseType(500)]
 		public IActionResult Add([FromQuery] string cartId, [FromQuery] string productId, [FromQuery] int quantity)
 		{
-			return CatchException(() =>
+			try
 			{
 				if (quantity <= 0) {
 					throw new Exception("Wrong quantity!");
 				}
 				var value = repo.AddToCart(cartId, productId, quantity);
 				return new OkObjectResult(value);
-			});
+			}
+			catch (Exception e)
+			{
+				return new BadRequestObjectResult(e.Message);
+			}
 		}
 
 		[HttpPost]
@@ -50,7 +52,7 @@ namespace CbCartService.Controllers
 		[ProducesResponseType(500)]
 		public IActionResult Remove([FromQuery] string cartId, [FromQuery] string productId, [FromQuery] int quantity)
 		{
-			return CatchException(() =>
+			try
 			{
 				if (quantity <= 0)
 				{
@@ -58,7 +60,11 @@ namespace CbCartService.Controllers
 				}
 				var value = repo.RemoveFromCart(cartId, productId, quantity);
 				return new OkObjectResult(value);
-			});
+			}
+			catch (Exception e)
+			{
+				return new BadRequestObjectResult(e.Message);
+			}
 		}
 
 		[HttpPost]
@@ -67,21 +73,12 @@ namespace CbCartService.Controllers
 		[ProducesResponseType(500)]
 		public IActionResult SetWebHook([FromQuery] string cartId, [FromQuery] string url)
 		{
-			return CatchException(() =>
+			try
 			{
 				// just to validate URL
 				var u = new Uri(url);
-
 				var value = repo.SetWebHook(cartId, url);
 				return new OkObjectResult(value);
-			});
-		}
-
-		private IActionResult CatchException(Func<IActionResult> func)
-		{
-			try
-			{
-				return func();
 			}
 			catch (Exception e)
 			{
